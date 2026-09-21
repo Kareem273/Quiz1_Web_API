@@ -1,8 +1,10 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Quiz1.Data;
 using Quiz1.Models;
+using Quiz1.Profiles;
 
 namespace Quiz1.Controllers
 {
@@ -12,9 +14,11 @@ namespace Quiz1.Controllers
     {
 
         private readonly AppDbContext db;
+        private readonly IMapper mapper;
         public StudentsController()
         {
             db = new AppDbContext();
+            mapper = new MapperConfiguration(cfg=>cfg.AddProfile(new StudentProfile())).CreateMapper();
         }
 
         [HttpGet]
@@ -22,7 +26,9 @@ namespace Quiz1.Controllers
         {
             var students = db.Students.Include(s=>s.Classroom).ToList();
 
-            return Ok(students);
+            var studentDtos = mapper.Map<List<Student>>(students);  
+
+            return Ok(studentDtos);
         }
 
         [HttpGet("{id:int}")]
@@ -36,52 +42,43 @@ namespace Quiz1.Controllers
                 return NotFound();
             }
 
-            return Ok(student);
+            var studentDto = mapper.Map<Student>(student);
+            return Ok(studentDto);
         }
 
-        [HttpGet("{name:alpha}")]
-        public IActionResult GetByFullName(string name, string lastname)
-        {
-            var fullname = $"{name} {lastname}";
-            var student = db.Students.FirstOrDefault(s => s.FullName == fullname);
-            if (student == null)
-            {
-                return NotFound();
-            }
-            return Ok(student);
+        
+
+        //[Route("/Api/std/fname")]
+        //[HttpGet]
+        //public IActionResult GetByFName(string name)
+        //{
+
+        //    var student = db.Students.FirstOrDefault(s => s.Firstname == name);
+        //    if (student == null)
+        //    {
+        //        return NotFound();
+        //    }
+
+            
+        //    return Ok(student);
 
 
-        }
+        //}
 
-        [Route("/Api/std/fname")]
-        [HttpGet]
-        public IActionResult GetByFName(string name)
-        {
+        //[Route("/Api/std/lname")]
+        //[HttpGet]
+        //public IActionResult GetByLName(string name)
+        //{
 
-            var student = db.Students.FirstOrDefault(s => s.Firstname == name);
-            if (student == null)
-            {
-                return NotFound();
-            }
-            return Ok(student);
-
-
-        }
-
-        [Route("/Api/std/lname")]
-        [HttpGet]
-        public IActionResult GetByLName(string name)
-        {
-
-            var student = db.Students.FirstOrDefault(s => s.Lastname == name);
-            if (student == null)
-            {
-                return NotFound();
-            }
-            return Ok(student);
+        //    var student = db.Students.FirstOrDefault(s => s.Lastname == name);
+        //    if (student == null)
+        //    {
+        //        return NotFound();
+        //    }
+        //    return Ok(student);
 
 
-        }
+        //}
 
 
         [HttpPost]

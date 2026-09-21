@@ -14,9 +14,7 @@ namespace Quiz1.Models
 
         public string Lastname { get; set; }
 
-        [NotMapped]
         
-        public string FullName => $"{Firstname} {Lastname}";
 
         [Required,MaxLength(150),EmailAddress]
         public string Email { get; set; }

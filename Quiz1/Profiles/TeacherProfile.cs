@@ -25,6 +25,8 @@ namespace Quiz1.Profiles
             .ForMember(dest => dest.FirstName, opt => opt.MapFrom(src => src.FullName.Split(new[]{' ' }, StringSplitOptions.RemoveEmptyEntries)[0]))
             .ForMember(dest => dest.LastName, opt => opt.MapFrom(src => src.FullName.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)[1]));
 
+            CreateMap<PartialEditTeacherDto, Teacher>();
+
             // .ForMember(dest => dest.LastName, opt => opt.MapFrom(src => src.FullName.Split('')[1]));
 
 

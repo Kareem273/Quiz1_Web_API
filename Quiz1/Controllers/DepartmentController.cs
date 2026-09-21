@@ -1,8 +1,10 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Quiz1.Data;
 using Quiz1.Dto.DepartmentDto;
 using Quiz1.Models;
+using Quiz1.Profiles;
 
 
 namespace Quiz1.Controllers
@@ -11,46 +13,40 @@ namespace Quiz1.Controllers
     [ApiController]
     public class DepartmentsController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly AppDbContext db;
+        private readonly IMapper mapper;
         public DepartmentsController()
         {
-            _context = new AppDbCotnext();
+            db = new AppDbCotnext();
+            mapper = new MapperConfiguration(cfg =>
+            {
+                cfg.AddProfile(new DepartmentProfile());
+            }).CreateMapper();
         }
+
+        
+
         [HttpGet]
         public IActionResult GetAllDepartments()
         {
-            var departments = _context.Departments.ToList();
+            var departments = db.Departments.ToList();
             if (departments == null || departments.Count == 0)
             {
                 return NotFound("No departments found!");
             }
-            var deptdtos = new List<DepartmentDto>();
-            foreach (var department in departments)
-            {
-                var deptdto = new DepartmentDto
-                {
-                    Name = department.Name,
-                    Id = department.DepartmentId,
-                    Description = department.Description
-                };
-                deptdtos.Add(deptdto);
-            }
+            var deptdtos = mapper.Map<List<DepartmentDto>>(departments);
+
             return Ok(deptdtos);
         }
         [HttpGet("{Id}")]
         public IActionResult GetDepartmentId(int Id)
         {
-            var department = _context.Departments.FirstOrDefault(d => d.DepartmentId == Id);
+            var department = db.Departments.FirstOrDefault(d => d.DepartmentId == Id);
             if (department == null)
             {
                 return NotFound("Id does not exist");
             }
-            var departmentDto = new DepartmentDto
-            {
-                Id = department.DepartmentId,
-                Name = department.Name,
-                Description = department.Description
-            };
+            var departmentDto = mapper.Map<DepartmentDto>(department);
             return Ok(departmentDto);
         }
         [HttpPost]
@@ -60,26 +56,21 @@ namespace Quiz1.Controllers
             {
                 return BadRequest("Please Enter The Department Correctly");
             }
-            Department department = new Department
-            {
-                Name = departmentDto.Name,
-                Description = departmentDto.Description
-            };
-            _context.Departments.Add(department);
-            _context.SaveChanges();
+           var department = mapper.Map<Department>(departmentDto);
+            db.Departments.Add(department);
+            db.SaveChanges();
             return Created();
         }
         [HttpPut("{Id}")]
         public IActionResult UpdateDepartment(int Id, CreateDepartmentDto departmentdto)
         {
-            var department = _context.Departments.FirstOrDefault(d => d.DepartmentId == Id);
+            var department = db.Departments.FirstOrDefault(d => d.DepartmentId == Id);
             if (department == null)
             {
                 return NotFound("Id does not exist.");
             }
-            department.Name = departmentdto.Name;
-            department.Description = departmentdto.Description;
-            _context.SaveChanges();
+            var updatedDepartment = mapper.Map<Department>(departmentdto);
+            db.SaveChanges();
             return NoContent();
         }
     }

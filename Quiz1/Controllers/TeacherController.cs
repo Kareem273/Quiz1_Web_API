@@ -93,5 +93,28 @@ namespace Quiz1.Controllers
             return Ok("Teacher Updated Successfully");
         }
 
+        [HttpPatch("{id}")]
+        public IActionResult PartiallyUpdateTeacher(int id, [FromBody] PartialEditTeacherDto teacherDto)
+        {
+            if (teacherDto == null || !ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var teacher = _context.Teachers
+                .FirstOrDefault(t => t.TeacherId == id);
+
+            if (teacher == null)
+            {
+                return NotFound("Teacher Not Found");
+            }
+
+            mapper.Map(teacherDto, teacher);
+
+            _context.SaveChanges();
+
+            return Ok("Teacher Updated Successfully");
+        }
+
     }
 }
