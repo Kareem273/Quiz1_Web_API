@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Quiz1.Data;
 using Quiz1.Dto.TeacherDTO;
 using Quiz1.Models;
 using Quiz1.Profiles;
@@ -12,12 +13,12 @@ namespace Quiz1.Controllers
     [ApiController]
     public class TeachersController : ControllerBase
     {
-        private readonly AppDbCotnext _context;
+        private readonly AppDbContext _context;
         private readonly IMapper mapper;
 
         public TeachersController()
         {
-            _context = new AppDbCotnext();
+            _context = new AppDbContext();
             var p = new MapperConfiguration(cfg =>
             {
                 cfg.AddProfile(new TeacherProfile());

@@ -108,12 +108,7 @@ namespace Quiz1.Controllers
             if (eistingstudent == null)
                 return NotFound();
 
-            eistingstudent.Firstname = s.Firstname;
-            eistingstudent.Lastname = s.Lastname;
-            eistingstudent.Email = s.Email;
-            eistingstudent.DOF = s.DOF;
-            eistingstudent.Phone = s.Phone;
-            eistingstudent.ClassroomId = s.ClassroomId;
+           var updatedstudent = mapper.Map<Student>(s);
 
             db.SaveChanges();
             return NoContent();

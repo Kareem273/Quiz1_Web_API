@@ -17,7 +17,7 @@ namespace Quiz1.Controllers
         private readonly IMapper mapper;
         public DepartmentsController()
         {
-            db = new AppDbCotnext();
+            db = new AppDbContext();
             mapper = new MapperConfiguration(cfg =>
             {
                 cfg.AddProfile(new DepartmentProfile());
@@ -69,13 +69,11 @@ namespace Quiz1.Controllers
             {
                 return NotFound("Id does not exist.");
             }
-            var updatedDepartment = mapper.Map<Department>(departmentdto);
+            var updatedDepartment = mapper.Map<CreateDepartmentDto, Department>(departmentdto, department);
             db.SaveChanges();
             return NoContent();
         }
     }
 
-    internal class AppDbCotnext : AppDbContext
-    {
-    }
+   
 }
