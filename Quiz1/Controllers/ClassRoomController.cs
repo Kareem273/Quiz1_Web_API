@@ -1,10 +1,8 @@
 ﻿using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Quiz1.Data;
 using Quiz1.Dto.ClassRoomDto;
-using Quiz1.Dto;
 using Quiz1.Models;
+using Quiz1.Repo.Abstract;
 
 namespace Quiz1.Controllers
 {
@@ -12,19 +10,19 @@ namespace Quiz1.Controllers
     [ApiController]
     public class ClassroomsController : ControllerBase
     {
-        private readonly AppDbContext context;
+        private readonly IGenericRepo<Classroom> repo;
         private readonly IMapper mapper;
 
-        public ClassroomsController(AppDbContext context, IMapper mapper)
+        public ClassroomsController(IGenericRepo<Classroom> repo, IMapper mapper)
         {
-            this.context = context;
+            this.repo = repo;
             this.mapper = mapper;
         }
 
         [HttpGet]
         public IActionResult GetAll()
         {
-            var classrooms = context.Classrooms.ToList();
+            var classrooms = repo.GetAll();
 
             var result = mapper.Map<List<ClassroomDto>>(classrooms);
 
@@ -34,9 +32,7 @@ namespace Quiz1.Controllers
         [HttpGet("{id}")]
         public IActionResult GetById(int id)
         {
-            var classroom = context.Classrooms
-                .Include(c => c.Students)
-                .FirstOrDefault(c => c.ClassroomId == id);
+            var classroom = repo.GetById(id);
 
             if (classroom == null)
                 return NotFound();
@@ -51,8 +47,8 @@ namespace Quiz1.Controllers
         {
             var classroom = mapper.Map<Classroom>(dto);
 
-            context.Classrooms.Add(classroom);
-            context.SaveChanges();
+            repo.Create(classroom);
+            repo.SaveChanges();
 
             return Ok(classroom);
         }
@@ -60,32 +56,31 @@ namespace Quiz1.Controllers
         [HttpPut("{id}")]
         public IActionResult Update(int id, ClassroomDto dto)
         {
-            var classroom = context.Classrooms
-                .FirstOrDefault(c => c.ClassroomId == id);
+            var classroom = repo.GetById(id);
 
             if (classroom == null)
                 return NotFound();
 
-            classroom.Name = dto.Name;
-            classroom.Grade = dto.Grade;
-            classroom.Capacity = dto.Capacity;
+            mapper.Map(dto, classroom);
 
-            context.SaveChanges();
+            repo.Update(classroom);
+            repo.SaveChanges();
 
-            return Ok(classroom);
+            var result = mapper.Map<ClassroomDto>(classroom);
+
+            return Ok(result);
         }
 
         [HttpDelete("{id}")]
         public IActionResult Delete(int id)
         {
-            var classroom = context.Classrooms
-                .FirstOrDefault(c => c.ClassroomId == id);
+            var classroom = repo.GetById(id);
 
             if (classroom == null)
                 return NotFound();
 
-            context.Classrooms.Remove(classroom);
-            context.SaveChanges();
+            repo.Delete(classroom);
+            repo.SaveChanges();
 
             return Ok("Classroom deleted successfully");
         }

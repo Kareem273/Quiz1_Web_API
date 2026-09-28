@@ -1,11 +1,8 @@
-﻿
-using AutoMapper;
+﻿using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Quiz1.Data;
 using Quiz1.Dto.SubjectDto;
-using Quiz1.Dto;
 using Quiz1.Models;
+using Quiz1.Repo.Abstract;
 
 namespace Quiz1.Controllers
 {
@@ -13,103 +10,97 @@ namespace Quiz1.Controllers
     [ApiController]
     public class SubjectsController : ControllerBase
     {
-        private readonly AppDbContext _context;
-        private readonly IMapper _mapper;
+        private readonly ISubjectRepo repo;
+        private readonly IMapper mapper;
 
-        public SubjectsController(AppDbContext context, IMapper mapper)
+        public SubjectsController(ISubjectRepo repo, IMapper mapper)
         {
-            _context = context;
-            _mapper = mapper;
+            this.repo = repo;
+            this.mapper = mapper;
         }
 
-        
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public IActionResult GetAll()
         {
-            var subjects = await _context.Subjects
-                .Include(s => s.Teacher)
-                .ToListAsync();
+            var subjects = repo.GetAll();
 
-            var result = _mapper.Map<List<SubjectDto>>(subjects);
+            var result = mapper.Map<List<SubjectDto>>(subjects);
 
             return Ok(result);
         }
 
-        
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(int id)
+        public IActionResult GetById(int id)
         {
-            var subject = await _context.Subjects
-                .Include(s => s.Teacher)
-                .FirstOrDefaultAsync(s => s.SubjectId == id);
+            var subject = repo.GetById(id);
 
             if (subject == null)
                 return NotFound();
 
-            var result = _mapper.Map<SubjectDto>(subject);
+            var result = mapper.Map<SubjectDto>(subject);
 
             return Ok(result);
         }
 
-       
-        [HttpPost]
-        public async Task<IActionResult> Create(CreateSubjectDto dto)
+        [HttpGet("teacher/{teacherId}")]
+        public IActionResult GetSubjectsByTeacher(int teacherId)
         {
-            var teacherExists = await _context.Teachers
-                .AnyAsync(t => t.TeacherId == dto.TeacherId);
+            var subjects = repo.GetSubjectsByTeacher(teacherId);
 
-            if (!teacherExists)
-                return BadRequest("Teacher does not exist.");
+            if (subjects == null || subjects.Count == 0)
+                return NotFound();
 
-            var subject = _mapper.Map<Subject>(dto);
+            var result = mapper.Map<List<SubjectDto>>(subjects);
 
-            _context.Subjects.Add(subject);
-            await _context.SaveChangesAsync();
+            return Ok(result);
+        }
+
+        [HttpPost]
+        public IActionResult Create(CreateSubjectDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest();
+
+            var subject = mapper.Map<Subject>(dto);
+
+            repo.Create(subject);
+            repo.SaveChanges();
+
+            var result = mapper.Map<SubjectDto>(subject);
 
             return CreatedAtAction(
                 nameof(GetById),
                 new { id = subject.SubjectId },
-                _mapper.Map<SubjectDto>(subject)
+                result
             );
         }
 
-        
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(
-            int id, CreateSubjectDto dto)
+        public IActionResult Update(int id, CreateSubjectDto dto)
         {
-            var subject = await _context.Subjects
-                .FindAsync(id);
+            var subject = repo.GetById(id);
 
             if (subject == null)
                 return NotFound();
 
-            var teacherExists = await _context.Teachers
-                .AnyAsync(t => t.TeacherId == dto.TeacherId);
+            mapper.Map(dto, subject);
 
-            if (!teacherExists)
-                return BadRequest("Teacher does not exist.");
-
-            _mapper.Map(dto, subject);
-
-            await _context.SaveChangesAsync();
+            repo.Update(subject);
+            repo.SaveChanges();
 
             return NoContent();
         }
 
-        
         [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(int id)
+        public IActionResult Delete(int id)
         {
-            var subject = await _context.Subjects
-                .FindAsync(id);
+            var subject = repo.GetById(id);
 
             if (subject == null)
                 return NotFound();
 
-            _context.Subjects.Remove(subject);
-
-            await _context.SaveChangesAsync();
+            repo.Delete(subject);
+            repo.SaveChanges();
 
             return NoContent();
         }

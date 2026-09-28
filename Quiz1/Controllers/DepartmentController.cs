@@ -1,11 +1,8 @@
 ﻿using AutoMapper;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Quiz1.Data;
 using Quiz1.Dto.DepartmentDto;
 using Quiz1.Models;
-using Quiz1.Profiles;
-
+using Quiz1.Repo.Abstract;
 
 namespace Quiz1.Controllers
 {
@@ -13,42 +10,47 @@ namespace Quiz1.Controllers
     [ApiController]
     public class DepartmentsController : ControllerBase
     {
-        private readonly AppDbContext db;
+        private readonly IGenericRepo<Department> repo;
         private readonly IMapper mapper;
-        public DepartmentsController()
-        {
-            db = new AppDbContext();
-            mapper = new MapperConfiguration(cfg =>
-            {
-                cfg.AddProfile(new DepartmentProfile());
-            }).CreateMapper();
-        }
 
-        
+        public DepartmentsController(
+            IGenericRepo<Department> repo,
+            IMapper mapper)
+        {
+            this.repo = repo;
+            this.mapper = mapper;
+        }
 
         [HttpGet]
         public IActionResult GetAllDepartments()
         {
-            var departments = db.Departments.ToList();
+            var departments = repo.GetAll();
+
             if (departments == null || departments.Count == 0)
             {
                 return NotFound("No departments found!");
             }
+
             var deptdtos = mapper.Map<List<DepartmentDto>>(departments);
 
             return Ok(deptdtos);
         }
+
         [HttpGet("{Id}")]
         public IActionResult GetDepartmentId(int Id)
         {
-            var department = db.Departments.FirstOrDefault(d => d.DepartmentId == Id);
+            var department = repo.GetById(Id);
+
             if (department == null)
             {
                 return NotFound("Id does not exist");
             }
+
             var departmentDto = mapper.Map<DepartmentDto>(department);
+
             return Ok(departmentDto);
         }
+
         [HttpPost]
         public IActionResult CreateDepartment(CreateDepartmentDto departmentDto)
         {
@@ -56,24 +58,49 @@ namespace Quiz1.Controllers
             {
                 return BadRequest("Please Enter The Department Correctly");
             }
-           var department = mapper.Map<Department>(departmentDto);
-            db.Departments.Add(department);
-            db.SaveChanges();
+
+            var department = mapper.Map<Department>(departmentDto);
+
+            repo.Create(department);
+            repo.SaveChanges();
+
             return Created();
         }
+
         [HttpPut("{Id}")]
-        public IActionResult UpdateDepartment(int Id, CreateDepartmentDto departmentdto)
+        public IActionResult UpdateDepartment(
+            int Id,
+            CreateDepartmentDto departmentdto)
         {
-            var department = db.Departments.FirstOrDefault(d => d.DepartmentId == Id);
+            var department = repo.GetById(Id);
+
             if (department == null)
             {
                 return NotFound("Id does not exist.");
             }
-            var updatedDepartment = mapper.Map<CreateDepartmentDto, Department>(departmentdto, department);
-            db.SaveChanges();
+
+            mapper.Map(departmentdto, department);
+
+            repo.Update(department);
+            repo.SaveChanges();
+
             return NoContent();
         }
-    }
 
-   
+        [HttpDelete("{Id}")]
+        public IActionResult DeleteDepartment(int Id)
+        {
+            var department = repo.GetById(Id);
+
+            if (department == null)
+            {
+                return NotFound("Id does not exist.");
+            }
+
+            repo.Delete(department);
+            repo.SaveChanges();
+
+            return Ok("Department deleted successfully");
+        }
+    }
 }

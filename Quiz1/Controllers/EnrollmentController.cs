@@ -1,10 +1,8 @@
 ﻿using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Quiz1.Data;
 using Quiz1.Dto.EnrollmentDto;
-using Quiz1.Dto;
 using Quiz1.Models;
+using Quiz1.Repo.Abstract;
 
 namespace Quiz1.Controllers
 {
@@ -12,22 +10,21 @@ namespace Quiz1.Controllers
     [ApiController]
     public class EnrollmentsController : ControllerBase
     {
-        private readonly AppDbContext context;
+        private readonly IGenericRepo<Enrollment> repo;
         private readonly IMapper mapper;
 
-        public EnrollmentsController(AppDbContext context, IMapper mapper)
+        public EnrollmentsController(
+            IGenericRepo<Enrollment> repo,
+            IMapper mapper)
         {
-            this.context = context;
+            this.repo = repo;
             this.mapper = mapper;
         }
 
         [HttpGet]
         public IActionResult GetAll()
         {
-            var enrollments = context.Enrollments
-                .Include(e => e.Student)
-                .Include(e => e.Subject)
-                .ToList();
+            var enrollments = repo.GetAll();
 
             var result = mapper.Map<List<EnrollmentDto>>(enrollments);
 
@@ -37,10 +34,7 @@ namespace Quiz1.Controllers
         [HttpGet("{id}")]
         public IActionResult GetById(int id)
         {
-            var enrollment = context.Enrollments
-                .Include(e => e.Student)
-                .Include(e => e.Subject)
-                .FirstOrDefault(e => e.EnrollmentId == id);
+            var enrollment = repo.GetById(id);
 
             if (enrollment == null)
                 return NotFound();
@@ -53,22 +47,10 @@ namespace Quiz1.Controllers
         [HttpPost]
         public IActionResult Create(CreateEnrollmentDto dto)
         {
-            var student = context.Students
-                .FirstOrDefault(s => s.StudentId == dto.StudentId);
-
-            if (student == null)
-                return BadRequest("Student does not exist");
-
-            var subject = context.Subjects
-                .FirstOrDefault(s => s.SubjectId == dto.SubjecttId);
-
-            if (subject == null)
-                return BadRequest("Subject does not exist");
-
             var enrollment = mapper.Map<Enrollment>(dto);
 
-            context.Enrollments.Add(enrollment);
-            context.SaveChanges();
+            repo.Create(enrollment);
+            repo.SaveChanges();
 
             return Ok(enrollment);
         }
@@ -76,18 +58,15 @@ namespace Quiz1.Controllers
         [HttpPut("{id}")]
         public IActionResult Update(int id, CreateEnrollmentDto dto)
         {
-            var enrollment = context.Enrollments
-                .FirstOrDefault(e => e.EnrollmentId == id);
+            var enrollment = repo.GetById(id);
 
             if (enrollment == null)
                 return NotFound();
 
-            enrollment.StudentId = dto.StudentId;
-            enrollment.SubjecttId = dto.SubjecttId;
-            enrollment.EnrollmentDate = dto.EnrollmentDate;
-            enrollment.Grade = dto.Grade;
+            mapper.Map(dto, enrollment);
 
-            context.SaveChanges();
+            repo.Update(enrollment);
+            repo.SaveChanges();
 
             return Ok(enrollment);
         }
@@ -95,14 +74,13 @@ namespace Quiz1.Controllers
         [HttpDelete("{id}")]
         public IActionResult Delete(int id)
         {
-            var enrollment = context.Enrollments
-                .FirstOrDefault(e => e.EnrollmentId == id);
+            var enrollment = repo.GetById(id);
 
             if (enrollment == null)
                 return NotFound();
 
-            context.Enrollments.Remove(enrollment);
-            context.SaveChanges();
+            repo.Delete(enrollment);
+            repo.SaveChanges();
 
             return Ok("Enrollment deleted successfully");
         }

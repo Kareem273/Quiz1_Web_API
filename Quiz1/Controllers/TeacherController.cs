@@ -1,11 +1,8 @@
 ﻿using AutoMapper;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Quiz1.Data;
 using Quiz1.Dto.TeacherDTO;
 using Quiz1.Models;
-using Quiz1.Profiles;
+using Quiz1.Repo.Abstract;
 
 namespace Quiz1.Controllers
 {
@@ -13,37 +10,34 @@ namespace Quiz1.Controllers
     [ApiController]
     public class TeachersController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly ITeacherRepo repo;
         private readonly IMapper mapper;
 
-        public TeachersController()
+        public TeachersController(ITeacherRepo repo, IMapper mapper)
         {
-            _context = new AppDbContext();
-            var p = new MapperConfiguration(cfg =>
-            {
-                cfg.AddProfile(new TeacherProfile());
-            });
-            mapper =p.CreateMapper();
+            this.repo = repo;
+            this.mapper = mapper;
         }
+
         [HttpGet]
-        public ActionResult<List<TeacherDto>> GetAllTeachers()
+        public IActionResult GetAllTeachers()
         {
-            var Teachers = _context.Teachers.Include(t => t.Department).ToList();
-            if (Teachers == null || Teachers.Count == 0)
+            var teachers = repo.GetAll();
+
+            if (teachers == null || teachers.Count == 0)
             {
                 return NotFound("No Teachers Found");
             }
-            var m =mapper.Map<List<TeacherDto>>(Teachers);
 
-            return Ok(m);
+            var result = mapper.Map<List<TeacherDto>>(teachers);
+
+            return Ok(result);
         }
 
         [HttpGet("{id}")]
-        public ActionResult<TeacherIDDto> GetTeacherById(int id)
+        public IActionResult GetTeacherById(int id)
         {
-            var teacher = _context.Teachers
-                .Include(t => t.Department)
-                .FirstOrDefault(t => t.TeacherId == id);
+            var teacher = repo.GetById(id);
 
             if (teacher == null)
             {
@@ -55,32 +49,48 @@ namespace Quiz1.Controllers
             return Ok(result);
         }
 
-        [HttpPost]
-        public IActionResult CreateTeacher([FromBody] CreateTeacherDto Teacherdto)
+        [HttpGet("department/{departmentId}")]
+        public IActionResult GetTeachersByDepartment(int departmentId)
         {
-            if (Teacherdto == null || !ModelState.IsValid)
+            var teachers = repo.GetTeachersByDepartment(departmentId);
+
+            if (teachers == null || teachers.Count == 0)
             {
-                return BadRequest();
+                return NotFound("No Teachers Found");
             }
 
-            var teacher = mapper.Map<Teacher>(Teacherdto);
+            var result = mapper.Map<List<TeacherDto>>(teachers);
 
-            _context.Teachers.Add(teacher);
-            _context.SaveChanges();
+            return Ok(result);
+        }
+
+        [HttpPost]
+        public IActionResult CreateTeacher([FromBody] CreateTeacherDto teacherDto)
+        {
+            if (teacherDto == null || !ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var teacher = mapper.Map<Teacher>(teacherDto);
+
+            repo.Create(teacher);
+            repo.SaveChanges();
 
             return Created();
         }
 
         [HttpPut("{id}")]
-        public IActionResult UpdateTeacher(int id, [FromBody] CreateTeacherDto teacherDto)
+        public IActionResult UpdateTeacher(
+            int id,
+            [FromBody] CreateTeacherDto teacherDto)
         {
             if (teacherDto == null || !ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var teacher = _context.Teachers
-                .FirstOrDefault(t => t.TeacherId == id);
+            var teacher = repo.GetById(id);
 
             if (teacher == null)
             {
@@ -89,21 +99,23 @@ namespace Quiz1.Controllers
 
             mapper.Map(teacherDto, teacher);
 
-            _context.SaveChanges();
+            repo.Update(teacher);
+            repo.SaveChanges();
 
             return Ok("Teacher Updated Successfully");
         }
 
         [HttpPatch("{id}")]
-        public IActionResult PartiallyUpdateTeacher(int id, [FromBody] PartialEditTeacherDto teacherDto)
+        public IActionResult PartiallyUpdateTeacher(
+            int id,
+            [FromBody] PartialEditTeacherDto teacherDto)
         {
             if (teacherDto == null || !ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var teacher = _context.Teachers
-                .FirstOrDefault(t => t.TeacherId == id);
+            var teacher = repo.GetById(id);
 
             if (teacher == null)
             {
@@ -112,10 +124,26 @@ namespace Quiz1.Controllers
 
             mapper.Map(teacherDto, teacher);
 
-            _context.SaveChanges();
+            repo.Update(teacher);
+            repo.SaveChanges();
 
             return Ok("Teacher Updated Successfully");
         }
 
+        [HttpDelete("{id}")]
+        public IActionResult DeleteTeacher(int id)
+        {
+            var teacher = repo.GetById(id);
+
+            if (teacher == null)
+            {
+                return NotFound("Teacher Not Found");
+            }
+
+            repo.Delete(teacher);
+            repo.SaveChanges();
+
+            return Ok("Teacher Deleted Successfully");
+        }
     }
 }

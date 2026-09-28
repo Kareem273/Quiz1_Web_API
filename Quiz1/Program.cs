@@ -1,4 +1,9 @@
 
+using Microsoft.EntityFrameworkCore;
+using Quiz1.Data;
+using Quiz1.Repo.Abstract;
+using Quiz1.Repo.Implementation;
+
 namespace Quiz1
 {
     public class Program
@@ -13,7 +18,12 @@ namespace Quiz1
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
-
+            builder.Services.AddDbContext<AppDbContext>(opt => opt.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+            builder.Services.AddAutoMapper(typeof(Program).Assembly);
+            builder.Services.AddScoped(typeof(IGenericRepo<>), typeof(GenericRepo<>));
+            builder.Services.AddScoped<IStudentRepo, StudentRepo>();
+            builder.Services.AddScoped<ITeacherRepo, TeacherRepo>();
+            builder.Services.AddScoped<ISubjectRepo, SubjectRepo>();
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.

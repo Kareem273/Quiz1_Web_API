@@ -1,10 +1,9 @@
 ﻿using AutoMapper;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Quiz1.Data;
+using Quiz1.Dto;
+using Quiz1.Dto.StudentDto;
 using Quiz1.Models;
-using Quiz1.Profiles;
+using Quiz1.Repo.Abstract;
 
 namespace Quiz1.Controllers
 {
@@ -12,21 +11,21 @@ namespace Quiz1.Controllers
     [ApiController]
     public class StudentsController : ControllerBase
     {
-
-        private readonly AppDbContext db;
+        private readonly IStudentRepo repo;
         private readonly IMapper mapper;
-        public StudentsController()
+
+        public StudentsController(IStudentRepo repo, IMapper mapper)
         {
-            db = new AppDbContext();
-            mapper = new MapperConfiguration(cfg=>cfg.AddProfile(new StudentProfile())).CreateMapper();
+            this.repo = repo;
+            this.mapper = mapper;
         }
 
         [HttpGet]
         public IActionResult GetAll()
         {
-            var students = db.Students.Include(s=>s.Classroom).ToList();
+            var students = repo.GetAll();
 
-            var studentDtos = mapper.Map<List<Student>>(students);  
+            var studentDtos = mapper.Map<List<StudentDto>>(students);
 
             return Ok(studentDtos);
         }
@@ -34,115 +33,98 @@ namespace Quiz1.Controllers
         [HttpGet("{id:int}")]
         public IActionResult GetById(int id)
         {
-            var student = db.Students.Include(s=>s.Classroom).FirstOrDefault(s=>s.StudentId==id);
-
+            var student = repo.GetById(id);
 
             if (student == null)
             {
                 return NotFound();
             }
 
-            var studentDto = mapper.Map<Student>(student);
+            var studentDto = mapper.Map<StudentDto>(student);
+
             return Ok(studentDto);
         }
 
-        
+        [HttpGet("classroom/{classroomId}")]
+        public IActionResult GetStudentsByClassroom(int classroomId)
+        {
+            var students = repo.GetStudentsByClassroom(classroomId);
 
-        //[Route("/Api/std/fname")]
-        //[HttpGet]
-        //public IActionResult GetByFName(string name)
-        //{
+            if (students == null || students.Count == 0)
+            {
+                return NotFound();
+            }
 
-        //    var student = db.Students.FirstOrDefault(s => s.Firstname == name);
-        //    if (student == null)
-        //    {
-        //        return NotFound();
-        //    }
+            var studentDtos = mapper.Map<List<StudentDto>>(students);
 
-            
-        //    return Ok(student);
-
-
-        //}
-
-        //[Route("/Api/std/lname")]
-        //[HttpGet]
-        //public IActionResult GetByLName(string name)
-        //{
-
-        //    var student = db.Students.FirstOrDefault(s => s.Lastname == name);
-        //    if (student == null)
-        //    {
-        //        return NotFound();
-        //    }
-        //    return Ok(student);
-
-
-        //}
-
+            return Ok(studentDtos);
+        }
 
         [HttpPost]
-        public IActionResult CreateStudent([FromBody]Student s)
+        public IActionResult CreateStudent([FromBody] StudentDto dto)
         {
-
-            if (s == null || !ModelState.IsValid)
-                return BadRequest();
-
-            var existingclassroom = db.Classrooms.Any(c => c.ClassroomId == s.ClassroomId);
-            if (existingclassroom == false)
+            if (dto == null || !ModelState.IsValid)
             {
-                return BadRequest(new { message = "Not Exist Classroom ( " });
-            }
-            db.Students.Add(s);
-            db.SaveChanges();
-            return Created();
-        }
-
-        [HttpPut]
-        public IActionResult UpdateStudent(int id,[FromBody] Student s)
-        {
-            if (s.ClassroomId != id)
                 return BadRequest();
-            var eistingstudent= db.Students.FirstOrDefault(s=>s.StudentId == id);
+            }
 
-            if (eistingstudent == null)
-                return NotFound();
+            var student = mapper.Map<Student>(dto);
 
-           var updatedstudent = mapper.Map<Student>(s);
+            repo.Create(student);
+            repo.SaveChanges();
 
-            db.SaveChanges();
-            return NoContent();
-
-
-
+            return Created("", student);
         }
 
-
-        [HttpPatch]
-
-        public IActionResult PartialEdit(int id,[FromBody]string firstname )
+        [HttpPut("{id}")]
+        public IActionResult UpdateStudent(int id, [FromBody] StudentDto dto)
         {
-            var existingstudent = db.Students.Find(id);
-
-            if (existingstudent == null)
-                return NotFound();
-
-            existingstudent.Firstname = firstname;
-
-            return NoContent();
-        }
-
-        [HttpDelete]
-
-        public IActionResult Delete(int id)
-        {
-            var student = db.Students.Find(id);
+            var student = repo.GetById(id);
 
             if (student == null)
-            { return NotFound();}
+            {
+                return NotFound();
+            }
 
-            db.Students.Remove(student);
-            db.SaveChanges();
+            mapper.Map(dto, student);
+
+            repo.Update(student);
+            repo.SaveChanges();
+
+            return NoContent();
+        }
+
+        [HttpPatch]
+        public IActionResult PartialEdit(int id, [FromBody] string firstname)
+        {
+            var student = repo.GetById(id);
+
+            if (student == null)
+            {
+                return NotFound();
+            }
+
+            student.Firstname = firstname;
+
+            repo.Update(student);
+            repo.SaveChanges();
+
+            return NoContent();
+        }
+
+        [HttpDelete("{id}")]
+        public IActionResult Delete(int id)
+        {
+            var student = repo.GetById(id);
+
+            if (student == null)
+            {
+                return NotFound();
+            }
+
+            repo.Delete(student);
+            repo.SaveChanges();
+
             return NoContent();
         }
     }
